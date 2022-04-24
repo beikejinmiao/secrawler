@@ -5,3 +5,7 @@ PyYAML==5.4.1
 BeautifulSoup4==4.10.0
 lxml==4.6.3
 openpyxl==3.0.9
+id-validator==1.0.20
+python-docx==0.8.11
+py7zr==0.18.5
+wget==3.2

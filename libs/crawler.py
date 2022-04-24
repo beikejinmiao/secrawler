@@ -1,20 +1,26 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+import os
 import re
 import requests
+from urllib.parse import urlparse
 from urllib.parse import urlsplit
 from collections import deque
 from bs4 import BeautifulSoup
 import tldextract
 from libs.regex import file
 from libs.logger import logger
-
+from paths import DOWNLOADS
 
 default_headers = {
     'Cache-Control': 'max-age=0',
     'Connection': 'keep-alive',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.74 Safari/537.36',
 }
+
+
+def url_filename(url):
+    return os.path.basename(urlparse(url).path)
 
 
 class Spider(object):
@@ -73,13 +79,20 @@ class Spider(object):
                 logger.error('GET %s %s' % (url, e))
                 self.broken_urls[url] = self.all_urls.get(url, '')
                 continue
+            #
+            if file.match(url):
+                filename = url_filename(url)
+                with open(os.path.join(DOWNLOADS, filename), 'wb') as fd:
+                    fd.write(resp.content)
+                yield url, filename, ''
+                continue
             # 提取url site和url路径
             parts = urlsplit(url)
             site = "{0.scheme}://{0.netloc}".format(parts)
             path = url[:url.rfind('/') + 1] if '/' in parts.path else url
             # 解析HTML页面
             soup = BeautifulSoup(resp.text, "lxml")  # soup = BeautifulSoup(response.text, "html.parser")
-            yield url, resp.text
+            yield url, None, resp.text
             # 提取页面内容里的URL
             links = soup.find_all('a')
             for link in links:
@@ -94,8 +107,8 @@ class Spider(object):
                     new_url = site + href
                 else:
                     new_url = path + href
-                # 过滤图片、文档、视频音频等文件链接
-                if file.match(new_url):
+                # 过滤链接
+                if self.uri_filter(new_url):
                     continue
                 new_url = self.abspath(new_url)
                 # 限制URL
@@ -106,6 +119,12 @@ class Spider(object):
                 if new_url and new_url not in self.all_urls:
                     self.all_urls[new_url] = url  # 保存该new_url的来源地址
                     new_urls.append(new_url)
+
+    def uri_filter(self, url):
+        # 过滤图片、文档、视频音频等文件链接
+        if file.match(url):
+            return True
+        return False
 
     def dump(self):
         pass

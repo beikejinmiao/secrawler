@@ -24,7 +24,7 @@ def url_filename(url):
 
 
 class Spider(object):
-    def __init__(self, start_url, same_site=True, headers=None, timeout=10):
+    def __init__(self, start_url, same_site=True, headers=None, timeout=10, hsts=False):
         self._start_url = start_url
         self.site = tldextract.extract(start_url).registered_domain.lower()
         #
@@ -37,6 +37,7 @@ class Spider(object):
         self.timeout = timeout
         #
         self.same_site = same_site      # 是否限制只爬取同站网页
+        self.hsts = hsts                # 是否只访问HTTPS网站链接
 
     def abspath(self, url):
         """
@@ -117,6 +118,8 @@ class Spider(object):
                 if path_limit and path_limit not in new_url:
                     continue
                 if new_url and new_url not in self.all_urls:
+                    if self.hsts and new_url.startswith('http://'):
+                        new_url = 'https://' + new_url[7:]
                     self.all_urls[new_url] = url  # 保存该new_url的来源地址
                     new_urls.append(new_url)
 

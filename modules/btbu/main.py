@@ -24,8 +24,8 @@ file = re.compile(r".*\.("
 
 class BTBUCrawler(Spider):
 
-    def __init__(self, start_url, same_site=True, headers=None, timeout=10):
-        super().__init__(start_url, same_site=same_site, headers=headers, timeout=timeout)
+    def __init__(self, start_url, same_site=True, headers=None, timeout=10, hsts=False):
+        super().__init__(start_url, same_site=same_site, headers=headers, timeout=timeout, hsts=hsts)
         self.timer = SimpleTimer(300, 300, self.dump)   # 每5分钟输出一次结果
         self.timer.daemon = True
         self.timer.start()
@@ -73,7 +73,7 @@ class BTBUCrawler(Spider):
 
 
 if __name__ == '__main__':
-    crawler = BTBUCrawler('http://www.btbu.edu.cn/eapdomain/static/cmsfiles/pim/File/20090914095604.doc')
+    crawler = BTBUCrawler('https://www.btbu.edu.cn/', hsts=True)
     # crawler = BTBUCrawler('http://localhost:8000/')
     try:
         crawler.run()

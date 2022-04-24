@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+import io
+import os
 import json
 from datetime import datetime
 from collections import defaultdict
@@ -39,4 +41,44 @@ def writer(path, texts, method="w", encoding='utf-8'):
             json.dump(texts, fout, indent=4)
         else:
             fout.write('\n'.join(texts))
+
+
+def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True,raisexp=False):
+    with io.open(path, encoding=encoding) as fopen:
+        print("Load: '%s'" % path)
+        while True:
+            try:
+                line = fopen.readline()
+            except Exception as e:
+                if raisexp:
+                    raise e
+                # UnicodeDecodeError: 'utf8' codec can't decode byte 0xfb in position 17: invalid start byte
+                continue
+            if not line:
+                break
+            # check the line whether is blank or not
+            line = line.strip(strip)
+            if skip_blank and not line:
+                continue
+            yield line
+
+
+def traverse(top, contains=None):
+    files = list()
+    if not os.path.exists(top):
+        print("'%s' is not existed" % top)
+        return files
+    if os.path.isfile(top):
+        files.append(top)
+        return files
+
+    for root, dirs, filenames in os.walk(top):
+        for filename in filenames:
+            file_path = os.path.join(root, filename)
+            if contains and contains not in filename:
+                continue
+
+            files.append(file_path)
+    print("File total count: %d" % len(files))
+    return files
 

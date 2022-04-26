@@ -5,6 +5,7 @@ import os
 import shutil
 from py7zr import pack_7zarchive, unpack_7zarchive
 from docx import Document
+import pandas as pd
 from utils import tree
 from utils import reader, traverse
 from modules.btbu.util import find_idcard
@@ -34,6 +35,14 @@ def load2find(path):
             doc = Document(filepath)
             for p in doc.paragraphs:
                 candidates.extend(find_idcard(p.text))
+        elif re.match(r'.*\.xls[x]?$', filepath, re.I):
+            print("Load: '%s'" % filepath)
+            xls = pd.read_excel(filepath, sheet_name=None)
+            for name, sheet in xls.items():
+                for index, row in sheet.iterrows():
+                    for value in row:
+                        candidates.extend(find_idcard(value))
+
         if len(candidates) > 0:
             results[filename] = list(set(candidates))
     return results

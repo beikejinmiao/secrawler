@@ -8,9 +8,8 @@ from urllib.parse import urlsplit
 from collections import deque
 from bs4 import BeautifulSoup
 import tldextract
-from libs.regex import file
+from libs.regex import html, common_dom
 from libs.logger import logger
-from paths import DOWNLOADS
 
 default_headers = {
     'Cache-Control': 'max-age=0',
@@ -19,25 +18,34 @@ default_headers = {
 }
 
 
-def url_filename(url):
-    return os.path.basename(urlparse(url).path)
+def url_file(url):
+    if url.endswith('/'):
+        return ''
+    url = urlparse(url).path    # 移除URL参数
+    if html.match(url) or common_dom.match(url):
+        return ''
+    if re.match(r'.+\.\w{2,5}$', url) and not re.match(r'.+\.[\d_]+$', url):
+        return os.path.basename(url)
+    return ''
 
 
 class Spider(object):
-    def __init__(self, start_url, same_site=True, headers=None, timeout=10, hsts=False):
+    def __init__(self, start_url, same_site=True, headers=None, timeout=10, ignore_file=True, hsts=False):
         self._start_url = start_url
         self.site = tldextract.extract(start_url).registered_domain.lower()
         #
         self.all_urls = dict()          # key: url, value: 该url的来源地址
         self.all_urls[start_url] = start_url
         self.broken_urls = dict()
+        self.file_urls = dict()
         #
         self.session = requests.session()
         self.session.headers = headers if isinstance(headers, dict) and len(headers) > 0 else default_headers
         self.timeout = timeout
         #
-        self.same_site = same_site      # 是否限制只爬取同站网页
-        self.hsts = hsts                # 是否只访问HTTPS网站链接
+        self.same_site = same_site          # 是否限制只爬取同站网页
+        self.ignore_file = ignore_file      # 是否忽略文件链接
+        self.hsts = hsts                    # 是否只访问HTTPS网站链接
 
     def abspath(self, url):
         """
@@ -56,7 +64,7 @@ class Spider(object):
             url = re.sub(r'[^/]+/\.\./', '', url)
         return url
 
-    def scrape(self, path_limit=''):
+    def scrape(self):
         """
         执行爬取&提取页面url操作
         """
@@ -64,6 +72,14 @@ class Spider(object):
         # 保存所有URL的来源
         while len(new_urls):
             url = new_urls.popleft()
+            # 处理文件链接(文件过大下载较慢,影响爬取速度)
+            if self.ignore_file:
+                filename = url_file(url)
+                if filename:
+                    self.file_urls[url] = self.all_urls.get(url)
+                    yield url, filename, None
+                    continue
+            # 爬取正常网页
             try:
                 resp = self.session.get(url, timeout=self.timeout)
                 logger.info('GET %s %s' % (url, resp.status_code))
@@ -79,13 +95,6 @@ class Spider(object):
             except Exception as e:
                 logger.error('GET %s %s' % (url, e))
                 self.broken_urls[url] = self.all_urls.get(url, '')
-                continue
-            #
-            if file.match(url):
-                filename = url_filename(url)
-                with open(os.path.join(DOWNLOADS, filename), 'wb') as fd:
-                    fd.write(resp.content)
-                yield url, filename, ''
                 continue
             # 提取url site和url路径
             parts = urlsplit(url)
@@ -109,24 +118,19 @@ class Spider(object):
                 else:
                     new_url = path + href
                 # 过滤链接
-                if self.uri_filter(new_url):
+                if self.filter_url(new_url):
                     continue
                 new_url = self.abspath(new_url)
                 # 限制URL
                 if self.same_site and self.site not in new_url:
                     continue
-                if path_limit and path_limit not in new_url:
-                    continue
+                if self.hsts and new_url.startswith('http://'):
+                    new_url = 'https://' + new_url[7:]
                 if new_url and new_url not in self.all_urls:
-                    if self.hsts and new_url.startswith('http://'):
-                        new_url = 'https://' + new_url[7:]
                     self.all_urls[new_url] = url  # 保存该new_url的来源地址
                     new_urls.append(new_url)
 
-    def uri_filter(self, url):
-        # 过滤图片、文档、视频音频等文件链接
-        if file.match(url):
-            return True
+    def filter_url(self, url):
         return False
 
     def dump(self):

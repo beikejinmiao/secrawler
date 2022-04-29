@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 import os
-import re
 import pandas as pd
 from datetime import datetime
+from id_validator import validator
 from libs.crawler import Spider
 from libs.timer import SimpleTimer
 from utils import tree, tree2list, cur_date, writer
 from paths import DUMP_HOME, DOWNLOADS
 from modules.btbu.util import find_idcard
-from modules.btbu.archive import unarchive
 import traceback
 from libs.logger import logger
 
@@ -46,19 +45,20 @@ class BTBUCrawler(Spider):
                 self.infos[url][idcard] = cur_date()
 
     def dump(self):
-        dump_time = datetime.now().strftime('%Y%m%d')
+        # dump_time = datetime.now().strftime('%Y%m%d')
         df = pd.DataFrame(tree2list(self.infos), columns=['url', 'idcard', 'timestamp'])
-        with pd.ExcelWriter(os.path.join(DUMP_HOME, '%s_results.%s.xlsx' % (university, dump_time))) as fout:
+        df['is_valid'] = df['idcard'].map(lambda x: 1 if validator.is_valid(x) else 0)
+        with pd.ExcelWriter(os.path.join(DUMP_HOME, '%s_results.xlsx' % university)) as fout:
             df.to_excel(fout, sheet_name='all_urls')
-            df[['idcard']].groupby(['idcard'])['idcard']. \
+            df[df['is_valid'] == 1][['idcard']].groupby(['idcard'])['idcard']. \
                 count(). \
                 reset_index(name='count'). \
                 sort_values(['count'], ascending=False). \
                 to_excel(fout, sheet_name='idcard', index=False)
-        writer(os.path.join(DUMP_HOME, 'all_urls.%s.txt' % dump_time), sorted(self.all_urls.keys()))
-        writer(os.path.join(DUMP_HOME, 'broken_urls.%s.txt' % dump_time), sorted(self.broken_urls.keys()))
-        writer(os.path.join(DUMP_HOME, 'file_urls.%s.txt' % dump_time), sorted(self.file_urls.keys()))
-        writer(os.path.join(DUMP_HOME, 'file_urls.%s.json' % dump_time), self.file_urls)
+        writer(os.path.join(DUMP_HOME, 'all_urls.txt'), sorted(self.all_urls.keys()))
+        writer(os.path.join(DUMP_HOME, 'broken_urls.txt'), sorted(self.broken_urls.keys()))
+        writer(os.path.join(DUMP_HOME, 'file_urls.txt'), sorted(self.file_urls.keys()))
+        writer(os.path.join(DUMP_HOME, 'file_urls.json'), self.file_urls)
         logger.info('Dump success. Total urls:%d, Broken urls: %d, File urls: %d' %
                     (len(self.all_urls), len(self.broken_urls), len(self.file_urls)))
 

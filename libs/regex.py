@@ -15,10 +15,19 @@ http_url_find_regex = re.compile(r'http[s]?://[\w\-.:]+\w+[\w./?&=+#%-]+')
 nohttp_url_find_regex = re.compile(r'(?:[\w\-]{1,128}\.){1,16}\w+(?:\:\d+)?[/?][\w./?&=+#%-]+')
 
 
-html = re.compile(r".*\.(html|htm|html5|shtml|shtm|xhtml|asp|aspx|jsp|jspx|php|do)$", re.I)
-img = re.compile(r".*\.(jp|jpg|jpeg|jpgv|gif|png|pngc|ico|bmp|svg|pic|tif|tiff|psd)$", re.I)
-video = re.compile(r".*\.(mp4|mp3|avi|mkv|flv|3gp|ts|m3u8|wav|mov|wmv|wmx)$", re.I)
-executable = re.compile(r".*\.(exe|apk|msi|iso|bin|jar|class|rpm|deb|whl|dbf)$", re.I)
+plain_text = re.compile(r".*\.(txt|json|md|log|xml|yml|yaml|conf|ini)$", re.I)
+doc = re.compile(r".*\.("
+                 r"doc|docx|docm|dot|dotx|dotm|rtf|"
+                 r"csv|xls|xlsx|xlsm|xlt|xltx|xltm|"
+                 r"ppt|pptx|pptm|pot|potx|potm|pps|ppsx|ppsm|"
+                 r"wps|wpt|et|ett|dps|dpt|vsd|vsdx|pdf|odt|chm"
+                 r")$", re.I)
+html = re.compile(r".*\.(html|htm|html5|shtml|shtm|xhtml|mht|mhtml|asp|aspx|jsp|jspx|php|do)$", re.I)
+img = re.compile(r".*\.(jpg|jpeg|jpgv|gif|png|pngc|ico|bmp|svg|pic|tif|tiff|psd|swf)$", re.I)
+video = re.compile(r".*\.(mp4|mp3|avi|mkv|flv|3gp|ts|m3u8|wav|mov|wmv|wmx|webm)$", re.I)
+executable = re.compile(r".*\.(dll|exe|msi|apk|iso|bin|jar|class|rpm|deb|whl|dbf)$", re.I)
+archive = re.compile(r".*\.(zip|tar|7z|gz|tgz|xz|bz|bz2|rar)$", re.I)
+
 file = re.compile(r".*\.("
                   r"jpg|jpeg|gif|png|ico|bmp|svg|pic|tif|tiff|psd|xcf|cdr|eps|indd|"
                   r"txt|csv|pdf|doc|docx|xls|xlsx|xltx|ppt|pptx|vsd|vsdx|chm|odt|swf|xml|"

@@ -8,4 +8,7 @@ openpyxl==3.0.9
 id-validator==1.0.20
 python-docx==0.8.11
 py7zr==0.18.5
+rarfile==4.0
+unrar==0.4
 wget==3.2
+xlrd==2.0.1

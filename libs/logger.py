@@ -31,7 +31,7 @@ LOGGING_CONFIG = {
             "level": "DEBUG",
             "formatter": "default",
             "filename": os.path.join(DUMP_HOME, "%s.log" % WORK_NAME),
-            "mode": "w",
+            "mode": "a+",
             "encoding": "utf-8"
         }
     },

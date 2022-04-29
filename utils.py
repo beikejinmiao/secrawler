@@ -5,6 +5,7 @@ import os
 import json
 from datetime import datetime
 from collections import defaultdict
+from libs.logger import logger
 
 
 def tree():
@@ -45,7 +46,7 @@ def writer(path, texts, method="w", encoding='utf-8'):
 
 def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False):
     with io.open(path, encoding=encoding) as fopen:
-        print("Load: '%s'" % path)
+        logger.info("Load: '%s'" % path)
         while True:
             try:
                 line = fopen.readline()
@@ -66,7 +67,7 @@ def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False
 def traverse(top, contains=None):
     files = list()
     if not os.path.exists(top):
-        print("'%s' is not existed" % top)
+        logger.warn("'%s' is not existed" % top)
         return files
     if os.path.isfile(top):
         files.append(top)

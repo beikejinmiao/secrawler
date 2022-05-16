@@ -27,6 +27,14 @@ shutil.register_unpack_format('7zip',
                               description='7zip archive')
 
 
+def _safe_int(item):
+    try:
+        i = int(item)
+    except:
+        i = 0
+    return i
+
+
 def load2find(path):
     files = traverse(path)
     results = dict()
@@ -59,10 +67,12 @@ def load2find(path):
 
 
 def unarchive(path):
+    stats = tree()
     files = traverse(path)
     results = tree()
     for filepath in files:
         filename = os.path.basename(filepath)
+        suffix = filename.split('.')[-1].lower()
         try:
             dest_dir = ''
             if re.match(r'.*\.(zip|7z|tar|tar\.bz2|tar\.gz|tar\.xz|tbz2|tgz|txz)$', filepath, re.I):
@@ -87,8 +97,11 @@ def unarchive(path):
                 pkg_name = ''
                 if len(ret) > 0:
                     results[pkg_name][filename] = ret[filename]
+            stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
         except Exception as e:
             logger.error(e)
+            stats[suffix]['failed'] = _safe_int(stats[suffix]['failed']) + 1
+    logger.info(json.dumps(dict(stats)))
     return results
 
 
@@ -116,7 +129,7 @@ def dump2csv(infos):
 if __name__ == '__main__':
     infos = unarchive(DOWNLOADS)
     print(json.dumps(infos))
-    dump2csv(infos)
+    # dump2csv(infos)
 
 
 

@@ -37,9 +37,11 @@ def _safe_int(item):
 
 def load2find(path):
     files = traverse(path)
+    stats = tree()   # 统计读取文件成功数量与失败数量
     results = dict()
     for filepath in files:
         filename = os.path.basename(filepath)
+        suffix = filename.split('.')[-1].lower()
         candidates = list()
         try:
             if re.match(r'.*\.(txt|csv|xml|json)$', filepath, re.I):
@@ -59,15 +61,19 @@ def load2find(path):
                     for index, row in sheet.iterrows():
                         for value in row:
                             candidates.extend(find_idcard(str(value)))
+            else:
+                continue
+            stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
         except Exception as e:
             logger.error(e)
+            stats[suffix]['failed'] = _safe_int(stats[suffix]['failed']) + 1
         if len(candidates) > 0:
             results[filename] = list(set(candidates))
-    return results
+    return results, stats
 
 
 def unarchive(path):
-    stats = tree()
+    stats = tree()  # 统计解压缩文件和读取文件成功数量与失败数量
     files = traverse(path)
     results = tree()
     for filepath in files:
@@ -79,6 +85,7 @@ def unarchive(path):
                 dest_dir = filepath + '.unpack'
                 # shutil.ReadError: xxx.zip is not a zip file
                 shutil.unpack_archive(filepath, dest_dir)
+                stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
             elif filename.endswith('.rar'):
                 # TODO: rarfile.RarCannotExec: Cannot find working tool
                 rarfile.UNRAR_TOOL = r"C:\OptSoft\unrar\UnRAR.exe"
@@ -86,22 +93,25 @@ def unarchive(path):
                 dest_dir = filepath + '.unpack'
                 with rar as rf:
                     rf.extractall(dest_dir)
+                stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
             #
             if dest_dir:
-                ret = load2find(dest_dir)
+                ret, _stats_ = load2find(dest_dir)
                 pkg_name = filename
                 if len(ret) > 0:
                     results[pkg_name] = ret
             else:
-                ret = load2find(filepath)
+                ret, _stats_ = load2find(filepath)
                 pkg_name = ''
                 if len(ret) > 0:
                     results[pkg_name][filename] = ret[filename]
-            stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
+                for s in _stats_:
+                    stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + _safe_int(_stats_[s]['success'])
+                    stats[suffix]['failed'] = _safe_int(stats[suffix]['failed']) + _safe_int(_stats_[s]['failed'])
         except Exception as e:
             logger.error(e)
             stats[suffix]['failed'] = _safe_int(stats[suffix]['failed']) + 1
-    logger.info(json.dumps(dict(stats)))
+    logger.info('文件读取成功&失败统计:\n' + json.dumps(dict(stats), indent=4))
     return results
 
 
@@ -128,8 +138,8 @@ def dump2csv(infos):
 
 if __name__ == '__main__':
     infos = unarchive(DOWNLOADS)
-    print(json.dumps(infos))
-    # dump2csv(infos)
+    print('文件内容提取结果:\n', json.dumps(infos))
+    dump2csv(infos)
 
 
 

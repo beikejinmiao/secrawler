@@ -32,7 +32,7 @@ class BTBUCrawler(Spider):
 
     def run(self):
         existed_target = tree()
-        for url, filename, html_text in self.scrape():
+        for url, filename, html_text in self.scrape(path_limit='https://nic.btbu.edu.cn/'):
             if html_text is None:
                 continue
             candidates = find_idcard(html_text)

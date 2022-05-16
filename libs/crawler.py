@@ -64,7 +64,7 @@ class Spider(object):
             url = re.sub(r'[^/]+/\.\./', '', url)
         return url
 
-    def scrape(self):
+    def scrape(self, path_limit=None):
         """
         执行爬取&提取页面url操作
         """
@@ -122,6 +122,8 @@ class Spider(object):
                     continue
                 new_url = self.abspath(new_url)
                 # 限制URL
+                if path_limit and path_limit not in new_url:
+                    continue
                 if self.same_site and self.site not in new_url:
                     continue
                 if self.hsts and new_url.startswith('http://'):

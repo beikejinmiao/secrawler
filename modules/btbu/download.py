@@ -27,13 +27,19 @@ from paths import DOWNLOADS, DUMP_HOME
 from libs.logger import logger
 
 
-# suffix = list()
-# for url in reader(os.path.join(DUMP_HOME, 'file_urls.txt')):
-#     suffix.append(urlparse(url).path.split('.')[-1].lower())
-#
-# counter = Counter(suffix)
-# print(json.dumps(dict(counter.most_common()), indent=4))
-#
+def url_filetype():
+    valid_file_count = 0
+    suffix = list()
+    for url in reader(os.path.join(DUMP_HOME, 'file_urls.txt')):
+        path = urlparse(url).path
+        if not (img.match(path) or video.match(path) or executable.match(path)):
+            valid_file_count += 1
+        suffix.append(path.split('.')[-1].lower())
+
+    counter = Counter(suffix)
+    print('文件总数量:', sum(counter.values()), '\n文档和压缩包数量:', valid_file_count)
+    print('文件类型分布:\n', json.dumps(dict(counter.most_common()), indent=4))
+
 
 def download():
     for url in reader(os.path.join(DUMP_HOME, 'file_urls.txt')):
@@ -46,6 +52,8 @@ def download():
         except:
             # UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)
             logger.error(traceback.format_exc())
+    # 统计文件类型数量
+    url_filetype()
 
 
 def _safe_int(item):
@@ -94,4 +102,6 @@ def load2stats(path):
 
 
 if __name__ == '__main__':
-    load2stats(DOWNLOADS)
+    # load2stats(DOWNLOADS)
+    download()
+

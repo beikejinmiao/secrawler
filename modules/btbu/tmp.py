@@ -9,8 +9,10 @@ import pandas as pd
 from collections import Counter
 from docx import Document
 import rarfile
+import pdfplumber
 from id_validator import validator
 from urllib.parse import urlparse
+from modules.btbu.util import find_idcard
 from utils import reader
 from paths import DUMP_HOME
 
@@ -63,8 +65,22 @@ from paths import DUMP_HOME
 # counter = Counter(suffix)
 # print(json.dumps(dict(counter.most_common()), indent=4))
 
-rarfile.UNRAR_TOOL = r"C:\OptSoft\unrar\UnRAR.exe"
-rar = rarfile.RarFile('D:\\PycharmProjects\\secrawler\\zdump\\downloads\\20100611024650.rar')
-with rar as rf:
-    rf.extractall('D:\\var')
+# rarfile.UNRAR_TOOL = r"C:\OptSoft\unrar\UnRAR.exe"
+# rar = rarfile.RarFile('D:\\PycharmProjects\\secrawler\\zdump\\downloads\\20100611024650.rar')
+# with rar as rf:
+#     rf.extractall('D:\\var')
+
+
+# with pdfplumber.open(r'D:\var\蒋茜交强.pdf') as pdf:
+#     for page in pdf.pages:
+#         text = page.extract_text()  # 提取文本
+#         print(find_idcard(text))
+
+from pptx import Presentation
+
+prs = Presentation(r'D:\var\test.pptx')
+for slide in prs.slides:
+    for shape in slide.shapes:
+        print(shape.text)
+
 

@@ -44,7 +44,7 @@ def writer(path, texts, method="w", encoding='utf-8'):
             fout.write('\n'.join(texts))
 
 
-def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False):
+def reader(path, encoding='gbk', strip="\r\n ", skip_blank=True, raisexp=False):
     with io.open(path, encoding=encoding) as fopen:
         logger.info("Load: '%s'" % path)
         while True:

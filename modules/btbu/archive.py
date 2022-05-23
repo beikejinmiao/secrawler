@@ -5,6 +5,7 @@ import os
 import json
 import shutil
 import rarfile
+import pdfplumber
 from py7zr import pack_7zarchive, unpack_7zarchive
 from docx import Document
 import pandas as pd
@@ -45,7 +46,7 @@ def load2find(path):
         candidates = list()
         try:
             if re.match(r'.*\.(txt|csv|xml|json)$', filepath, re.I):
-                for line in reader(filepath):
+                for line in reader(filepath, raisexp=True):
                     candidates.extend(find_idcard(line))
             elif re.match(r'.*\.doc[x]?$', filepath, re.I):
                 logger.info("Load: '%s'" % filepath)
@@ -53,6 +54,10 @@ def load2find(path):
                 doc = Document(filepath)
                 for p in doc.paragraphs:
                     candidates.extend(find_idcard(p.text))
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            candidates.extend(find_idcard(cell.text))
             elif re.match(r'.*\.xls[x]?$', filepath, re.I):
                 logger.info("Load: '%s'" % filepath)
                 # ValueError: Excel file format cannot be determined, you must specify an engine manually.
@@ -61,6 +66,11 @@ def load2find(path):
                     for index, row in sheet.iterrows():
                         for value in row:
                             candidates.extend(find_idcard(str(value)))
+            elif re.match(r'.*\.pdf$', filepath, re.I):
+                with pdfplumber.open(filepath) as pdf:
+                    for page in pdf.pages:
+                        text = page.extract_text()  # 提取文本
+                        candidates.extend(find_idcard(text))
             else:
                 continue
             stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
@@ -68,7 +78,7 @@ def load2find(path):
             logger.error(e)
             stats[suffix]['failed'] = _safe_int(stats[suffix]['failed']) + 1
         if len(candidates) > 0:
-            results[filename] = list(set(candidates))
+            results[filename] = list(candidates)
     return results, stats
 
 

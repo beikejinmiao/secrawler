@@ -5,9 +5,7 @@ import os
 import json
 import shutil
 import rarfile
-import pdfplumber
 from py7zr import pack_7zarchive, unpack_7zarchive
-from docx import Document
 import pandas as pd
 from id_validator import validator
 from urllib.parse import urlparse
@@ -15,6 +13,7 @@ from utils import tree, tree2list
 from utils import reader, traverse
 from modules.btbu.util import find_idcard
 from paths import DOWNLOADS, DUMP_HOME
+from libs.office import doc, docx, xls, xlsx, ppt, pptx, pdf
 from libs.logger import logger
 
 # https://bbs.huaweicloud.com/blogs/180864
@@ -26,6 +25,17 @@ shutil.register_unpack_format('7zip',
                               ['.7z'],
                               unpack_7zarchive,
                               description='7zip archive')
+
+
+office_extract = {
+    'doc': doc,
+    'docx': docx,
+    'xls': xls,
+    'xlsx': xlsx,
+    'ppt': ppt,
+    'pptx': pptx,
+    'pdf': pdf,
+}
 
 
 def _safe_int(item):
@@ -48,29 +58,10 @@ def load2find(path):
             if re.match(r'.*\.(txt|csv|xml|json)$', filepath, re.I):
                 for line in reader(filepath, raisexp=True):
                     candidates.extend(find_idcard(line))
-            elif re.match(r'.*\.doc[x]?$', filepath, re.I):
+            elif re.match(r'.*\.(doc[x]?|xls[x]?|ppt[x]?|pdf)$', filepath, re.I):
                 logger.info("Load: '%s'" % filepath)
-                # docx.opc.exceptions.PackageNotFoundError: Package not found at ''
-                doc = Document(filepath)
-                for p in doc.paragraphs:
-                    candidates.extend(find_idcard(p.text))
-                for table in doc.tables:
-                    for row in table.rows:
-                        for cell in row.cells:
-                            candidates.extend(find_idcard(cell.text))
-            elif re.match(r'.*\.xls[x]?$', filepath, re.I):
-                logger.info("Load: '%s'" % filepath)
-                # ValueError: Excel file format cannot be determined, you must specify an engine manually.
-                xls = pd.read_excel(filepath, sheet_name=None)
-                for name, sheet in xls.items():
-                    for index, row in sheet.iterrows():
-                        for value in row:
-                            candidates.extend(find_idcard(str(value)))
-            elif re.match(r'.*\.pdf$', filepath, re.I):
-                with pdfplumber.open(filepath) as pdf:
-                    for page in pdf.pages:
-                        text = page.extract_text()  # 提取文本
-                        candidates.extend(find_idcard(text))
+                for text in office_extract[suffix](filepath):
+                    candidates.extend(find_idcard(text))
             else:
                 continue
             stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1

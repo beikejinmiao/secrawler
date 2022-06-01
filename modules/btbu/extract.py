@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from utils import tree, tree2list
 from utils import reader, traverse
 from modules.btbu.util import find_idcard
+from modules.btbu.config import UNRAR_PATH
 from paths import DOWNLOADS, DUMP_HOME
 from libs.office import doc, docx, xls, xlsx, ppt, pptx, pdf
 from libs.logger import logger
@@ -89,7 +90,7 @@ def unarchive(path):
                 stats[suffix]['success'] = _safe_int(stats[suffix]['success']) + 1
             elif filename.endswith('.rar'):
                 # TODO: rarfile.RarCannotExec: Cannot find working tool
-                rarfile.UNRAR_TOOL = r"C:\OptSoft\unrar\UnRAR.exe"
+                rarfile.UNRAR_TOOL = UNRAR_PATH
                 rar = rarfile.RarFile(filepath)
                 dest_dir = filepath + '.unpack'
                 with rar as rf:

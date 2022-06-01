@@ -4,6 +4,7 @@ import paramiko
 import socket
 import os
 from stat import S_ISDIR
+from modules.btbu.util import downloaded_md5
 
 """
 https://gist.github.com/johnfink8/2190472
@@ -49,7 +50,7 @@ class SSHSession(object):
         self.ssh.connect(hostname, port=port, username=username, password=password, timeout=timeout)
         #
         # self.bloom = BloomFilter(max_elements=1000000, error_rate=0.001)
-        self.bloom = dict()
+        self.bloom = downloaded_md5()
 
     def command(self, cmd):
         stdin, stdout, stderr = self.ssh.exec_command(cmd, get_pty=True)

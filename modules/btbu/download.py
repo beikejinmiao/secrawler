@@ -1,28 +1,14 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-import os
-import json
 import wget
 import traceback
-from urllib.parse import urlparse
-from utils import reader
-from paths import DUMP_HOME, DOWNLOADS
 from libs.regex import img, video, executable
 from libs.logger import logger
 from collections import Counter
-import re
 import os
 import json
-import shutil
-import rarfile
-from py7zr import pack_7zarchive, unpack_7zarchive
-from docx import Document
-import pandas as pd
-from id_validator import validator
 from urllib.parse import urlparse
-from utils import tree, tree2list
-from utils import reader, traverse
-from modules.btbu.util import find_idcard
+from utils import reader
 from paths import DOWNLOADS, DUMP_HOME
 from libs.logger import logger
 
@@ -51,6 +37,5 @@ def download():
 
 
 if __name__ == '__main__':
-    # load2stats(DOWNLOADS)
     download()
 

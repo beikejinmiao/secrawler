@@ -44,17 +44,14 @@ def writer(path, texts, method="w", encoding='utf-8'):
             fout.write('\n'.join(texts))
 
 
-def reader(path, encoding='gbk', strip="\r\n ", skip_blank=True, raisexp=False):
+def _reader_(path, encoding, strip="\r\n ", skip_blank=True):
     with io.open(path, encoding=encoding) as fopen:
-        logger.info("Load: '%s'" % path)
         while True:
             try:
                 line = fopen.readline()
             except Exception as e:
-                if raisexp:
-                    raise e
                 # UnicodeDecodeError: 'utf8' codec can't decode byte 0xfb in position 17: invalid start byte
-                continue
+                raise e
             if not line:
                 break
             # check the line whether is blank or not
@@ -62,6 +59,25 @@ def reader(path, encoding='gbk', strip="\r\n ", skip_blank=True, raisexp=False):
             if skip_blank and not line:
                 continue
             yield line
+
+
+def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False):
+    charsets = ['utf-8', 'gbk']
+    if encoding not in charsets:
+        charsets.append(encoding)
+    logger.info("Load: '%s'" % path)
+    # 尝试多种编码方式
+    for charset in charsets:
+        try:
+            for line in _reader_(path, charset, strip=strip, skip_blank=skip_blank):
+                yield line
+        except UnicodeDecodeError as e:
+            logger.warn(e)
+            continue
+        except Exception as e:
+            if raisexp:
+                raise e
+        break
 
 
 def traverse(top, contains=None):

@@ -28,7 +28,7 @@ def downloaded_md5():
         with open(filepath, "rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 hash_md5.update(chunk)
-        md5_dict[hash_md5.hexdigest()] = os.path.basename(filepath)
+        md5_dict[hash_md5.hexdigest()] = filepath
     return md5_dict
 
 

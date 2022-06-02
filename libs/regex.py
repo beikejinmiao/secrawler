@@ -26,7 +26,7 @@ html = re.compile(r".*\.(html|htm|html5|shtml|shtm|xhtml|mht|mhtml|asp|aspx|jsp|
 img = re.compile(r".*\.(jpg|jpeg|jpgv|gif|png|pngc|ico|bmp|svg|pic|tif|tiff|psd|swf)$", re.I)
 video = re.compile(r".*\.(mp4|mp3|avi|mkv|flv|3gp|ts|m3u8|wav|mov|wmv|wmx|webm)$", re.I)
 executable = re.compile(r".*\.(dll|exe|msi|apk|iso|bin|jar|class|rpm|deb|whl|dbf)$", re.I)
-archive = re.compile(r".*\.(zip|tar|7z|gz|tgz|xz|bz|bz2|rar)$", re.I)
+archive = re.compile(r".*\.(zip|tar|7z|gz|tgz|xz|txz|bz|tbz|bz2|tbz2|rar)$", re.I)
 
 file = re.compile(r".*\.("
                   r"jpg|jpeg|gif|png|ico|bmp|svg|pic|tif|tiff|psd|xcf|cdr|eps|indd|"

@@ -80,6 +80,5 @@ def traverse(top, contains=None):
                 continue
 
             files.append(file_path)
-    print("File total count: %d" % len(files))
     return files
 

@@ -3,6 +3,7 @@
 import threading
 import time
 import traceback
+from multiprocessing import Process
 from libs.logger import logger
 
 
@@ -36,3 +37,16 @@ def timer(delay, period):
             return _timer
         return wrapper
     return decorate
+
+
+def processed(daemon=True, start=False):
+    def decorate(func):
+        def wrapper(*args, **kwargs):
+            process = Process(target=func, args=args, kwargs=kwargs)
+            process.daemon = daemon
+            if start:
+                process.start()
+            return process
+        return wrapper
+    return decorate
+

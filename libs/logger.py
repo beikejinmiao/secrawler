@@ -39,19 +39,19 @@ LOGGING_CONFIG = {
     "loggers": {
         "console": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": False,
         },
         "file": {
             "handlers": ["file"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
         }
     },
 
     "root": {
         "handlers": ["console"],
-        "level": "DEBUG"
+        "level": "INFO"
     }
 }
 

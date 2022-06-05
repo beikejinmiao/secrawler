@@ -62,7 +62,7 @@ def _reader_(path, encoding, strip="\r\n ", skip_blank=True):
 
 
 def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False):
-    charsets = ['utf-8', 'gbk']
+    charsets = ['gbk', 'utf-8']
     if encoding not in charsets:
         charsets.append(encoding)
     logger.info("Load: '%s'" % path)

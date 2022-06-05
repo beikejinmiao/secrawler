@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-import tika
-from tika import parser
-import json
 import time
 import re
 import os
+import sys
 import shutil
 import rarfile
 import traceback
@@ -17,12 +15,13 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 from utils import tree2list
 from libs.timer import timer, processed
-from libs.regex import img, video, executable, archive, doc
+from libs.regex import plain_text, html, archive
 from utils import reader, traverse
 from modules.btbu.util import find_idcard
 from modules.btbu.config import UNRAR_PATH
 from modules.btbu.sftp import SSHSession, SSH_HOST, SSH_PORT, SSH_USER, SSH_PASSWORD
 from paths import DOWNLOADS, DUMP_HOME
+from libs.office import doc, docx, xls, xlsx, ppt, pptx, pdf
 from libs.logger import logger
 
 
@@ -33,6 +32,17 @@ shutil.register_unpack_format('7zip',
                               ['.7z'],
                               unpack_7zarchive,
                               description='7zip archive')
+
+office_extract = {
+    'doc': doc,
+    'docx': docx,
+    'xls': xls,
+    'xlsx': xlsx,
+    'ppt': ppt,
+    'pptx': pptx,
+    'pdf': pdf,
+}
+office = re.compile(r'.*\.(%s)$' % '|'.join(list(office_extract.keys())), re.I)
 
 
 def unpack(root, dstdir=''):
@@ -58,43 +68,35 @@ def unpack(root, dstdir=''):
     return failed_count
 
 
+def _extract(root):
+    results = dict()
+    files = traverse(root)
+    for filepath in files:
+        filename = os.path.basename(filepath)
+        suffix = filename.split('.')[-1].lower()
+        candidates = list()
+        try:
+            if plain_text.match(filepath) or html.match(filepath):
+                for line in reader(filepath, raisexp=True):
+                    candidates.extend(find_idcard(line))
+            elif office.match(filepath):
+                for text in office_extract[suffix](filepath):
+                    candidates.extend(find_idcard(text))
+        except:
+            logger.error(traceback.format_exc())
+        if len(candidates) > 0:
+            results[filepath] = list(candidates)
+    return results
+
+
 class Manager(object):
     def __init__(self):
         self.queue = Queue(100000)
-        #
-        self.counter = {
-            'que_get': 0,
-            'archive': 0,
-            'doc': 0,
-            'others': 0,
-        }
 
     # @processed(start=True)
     def download(self, remote):
         ssh = SSHSession(hostname=SSH_HOST, port=SSH_PORT, username=SSH_USER, password=SSH_PASSWORD, queue=self.queue)
         ssh.get_all(remote, DOWNLOADS)
-
-    def _extract(self, root):
-        results = dict()
-        files = traverse(root)
-        for filepath in files:
-            candidates = list()
-            try:
-                if img.match(filepath) or video.match(filepath) or archive.match(filepath) or executable.match(
-                        filepath):
-                    continue
-                logger.info("Load: '%s'" % filepath)
-                if doc.match(filepath):
-                    self.counter['doc'] += 1
-                else:
-                    self.counter['others'] += 1
-                parsed = parser.from_file(filepath)
-                candidates.extend(find_idcard(parsed["content"]))
-            except:
-                logger.error(traceback.format_exc())
-            if len(candidates) > 0:
-                results[filepath] = list(candidates)
-        return results
 
     # @processed(start=True)
     def extract(self):
@@ -107,26 +109,23 @@ class Manager(object):
             df = df.assign(idcard=df["idcard"]).explode("idcard").reset_index(drop=True)
             df['is_valid'] = df['idcard'].map(lambda x: 1 if validator.is_valid(x) else 0)
             df.to_csv(os.path.join(DUMP_HOME, 'results.csv'))
-            logger.info('Extractor count stats: %s' % json.dumps(self.counter))
-
         dump2csv()
         # 无法根据queue是否empty自动退出(如果处理快于下载导致queue多数时间为空)
         while True:
             filepath = self.queue.get(block=True)     # 阻塞至项目可得到
-            self.counter['que_get'] += 1
             logger.debug('Get: %s' % filepath)
             results = None
-            if img.match(filepath) or video.match(filepath) or executable.match(filepath):
-                continue
             if archive.match(filepath):
-                self.counter['archive'] += 1
-                logger.info("Unpack: '%s'" % filepath)
+                logger.info("Load: '%s'" % filepath)
                 dstdir = filepath + '.unpack'
                 unpack(filepath, dstdir=dstdir)
-                results = self._extract(dstdir)
+                results = _extract(dstdir)
                 shutil.rmtree(dstdir, ignore_errors=True)
+            elif plain_text.match(filepath) or html.match(filepath) or office.match(filepath):
+                logger.info("Load: '%s'" % filepath)
+                results = _extract(filepath)
             else:
-                results = self._extract(filepath)
+                logger.warning('UnHandle: %s' % filepath)
             if results:
                 infos.update(results)
             os.remove(filepath)
@@ -147,15 +146,11 @@ class Manager(object):
             if self.queue.empty():
                 logger.info('Extract Completed.')
                 time.sleep(60)
-            logger.info('Extractor count stats: %s' % json.dumps(self.counter))
             sys.exit(0)
 
 
 if __name__ == '__main__':
     manager = Manager()
-    try:
-        manager.run()
-    except KeyboardInterrupt:
-        logger.info('Extractor count stats: %s' % json.dumps(manager.counter))
+    manager.run()
 
 

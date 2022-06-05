@@ -4,7 +4,7 @@ import time
 import paramiko
 import socket
 import os
-import traceback
+import json
 from stat import S_ISDIR
 from queue import Full
 from libs.regex import img, video, executable
@@ -62,6 +62,12 @@ class SSHSession(object):
         # self.bloom = BloomFilter(max_elements=1000000, error_rate=0.001)
         self.bloom = downloaded_md5()
         self.queue = queue
+        #
+        self.counter = {
+            'sftp_find': 0,
+            'download': 0,
+            'que_put': 0,
+        }
 
     def command(self, cmd):
         stdin, stdout, stderr = self.ssh.exec_command(cmd, get_pty=True)
@@ -124,6 +130,7 @@ class SSHSession(object):
     def _put_to_queue(self, filepath):
         if self.queue is None:
             return
+        self.counter['que_put'] += 1
         # 当queue长度大于100时等待消费端处理,避免堆积过多导致占用过多磁盘空间
         while self.queue.qsize() > 100:
             logger.debug('Queue size greater than 100, sleep 10s.')
@@ -159,6 +166,7 @@ class SSHSession(object):
             except FileExistsError:
                 pass
             for filename in files:
+                self.counter['sftp_find'] += 1
                 remote_filepath = self._path_join(home, path, filename)
                 if img.match(filename) or video.match(filename) or executable.match(filename):
                     logger.debug('Ignore: %s' % remote_filepath)
@@ -167,9 +175,11 @@ class SSHSession(object):
                     logger.info('Downloaded: %s' % remote_filepath)
                     continue
                 local_filepath = os.path.join(local_dir, path, filename)
-                self.get(remote_filepath, local_filepath)
                 logger.info('Download: %s\t%s' % (remote_filepath, local_filepath))
+                self.counter['download'] += 1
+                self.get(remote_filepath, local_filepath)
                 self._put_to_queue(local_filepath)
+                logger.info('Downloader count stats: %s' % json.dumps(self.counter))
 
     def write_command(self, text, remotefile):
         #  Writes text to remotefile, and makes remotefile executable.

@@ -17,6 +17,7 @@ def check_idcard(idcard):
 
 
 def find_idcard(text):
+    text = str(text)
     # return [x for x in idcard_pattern.findall(text) if check_idcard(x)]
     return [x for x in idcard_pattern.findall(text) if x]
 

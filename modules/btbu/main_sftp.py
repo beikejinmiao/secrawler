@@ -6,10 +6,13 @@ import os
 import sys
 import shutil
 import rarfile
+import traceback
 from multiprocessing import Queue, Process
 from py7zr import pack_7zarchive, unpack_7zarchive
 import pandas as pd
 from id_validator import validator
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 from utils import tree2list
 from libs.timer import timer, processed
 from libs.regex import plain_text, html, archive
@@ -79,8 +82,8 @@ def _extract(root):
             elif office.match(filepath):
                 for text in office_extract[suffix](filepath):
                     candidates.extend(find_idcard(text))
-        except Exception as e:
-            logger.error(e)
+        except:
+            logger.error(traceback.format_exc())
         if len(candidates) > 0:
             results[filepath] = list(candidates)
     return results
@@ -92,15 +95,15 @@ class Manager(object):
 
     # @processed(start=True)
     def download(self, remote):
-        ssh = SSHSession(hostname=SSH_HOST, port=SSH_PORT, password=SSH_PASSWORD, queue=self.queue)
+        ssh = SSHSession(hostname=SSH_HOST, port=SSH_PORT, username=SSH_USER, password=SSH_PASSWORD, queue=self.queue)
         ssh.get_all(remote, DOWNLOADS)
 
     # @processed(start=True)
     def extract(self):
         infos = dict()
 
-        # 每10分钟保存一次现有结果
-        @timer(600, 600)
+        # 每2分钟保存一次现有结果
+        @timer(120, 120)
         def dump2csv():
             df = pd.DataFrame(tree2list(infos), columns=['filepath', 'idcard'])
             df = df.assign(idcard=df["idcard"]).explode("idcard").reset_index(drop=True)
@@ -117,16 +120,18 @@ class Manager(object):
                 dstdir = filepath + '.unpack'
                 unpack(filepath, dstdir=dstdir)
                 results = _extract(dstdir)
+                shutil.rmtree(dstdir, ignore_errors=True)
             elif plain_text.match(filepath) or html.match(filepath) or office.match(filepath):
                 logger.info("Load: '%s'" % filepath)
                 results = _extract(filepath)
             else:
-                logger.warn('UnHandle: %s' % filepath)
+                logger.warning('UnHandle: %s' % filepath)
             if results:
                 infos.update(results)
+            os.remove(filepath)
 
     def run(self):
-        ps_down = Process(target=self.download, name='download', args=('/root/xdocker',))
+        ps_down = Process(target=self.download, name='download', args=('/data/publish',))
         ps_ext = Process(target=self.extract, name='extract')
         ps_down.start()
         ps_ext.start()

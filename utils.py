@@ -72,7 +72,7 @@ def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False
             for line in _reader_(path, charset, strip=strip, skip_blank=skip_blank):
                 yield line
         except UnicodeDecodeError as e:
-            logger.warn(e)
+            logger.warning(e)
             continue
         except Exception as e:
             if raisexp:
@@ -82,8 +82,10 @@ def reader(path, encoding='utf-8', strip="\r\n ", skip_blank=True, raisexp=False
 
 def traverse(top, contains=None):
     files = list()
+    if not top:
+        return files
     if not os.path.exists(top):
-        logger.warn("'%s' is not existed" % top)
+        logger.warning("'%s' is not existed" % top)
         return files
     if os.path.isfile(top):
         files.append(top)

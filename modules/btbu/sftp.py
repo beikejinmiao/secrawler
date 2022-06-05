@@ -7,6 +7,7 @@ import os
 import traceback
 from stat import S_ISDIR
 from queue import Full
+from libs.regex import img, video, executable
 from modules.btbu.util import downloaded_md5
 from libs.logger import logger
 
@@ -14,9 +15,9 @@ from libs.logger import logger
 https://gist.github.com/johnfink8/2190472
 """
 
-SSH_HOST = '106.13.202.41'
+SSH_HOST = '10.0.33.50'
 SSH_PORT = 22
-SSH_USER = 'root'
+SSH_USER = 'grxxjc'
 SSH_PASSWORD = ''
 
 
@@ -123,6 +124,10 @@ class SSHSession(object):
     def _put_to_queue(self, filepath):
         if self.queue is None:
             return
+        # 当queue长度大于100时等待消费端处理,避免堆积过多导致占用过多磁盘空间
+        while self.queue.qsize() > 100:
+            logger.debug('Queue size greater than 100, sleep 10s.')
+            time.sleep(10)
         self.queue.put(filepath, block=True)        # 阻塞至有空闲槽可用
         logger.debug('Put: %s' % filepath)
         # while True:
@@ -141,8 +146,8 @@ class SSHSession(object):
         #
         # For the record, something like this would gennerally be faster:
         # ssh user@host 'tar -cz /source/folder' | tar -xz
-
-        self.sftp.chdir(os.path.split(remote_dir)[0])
+        home = os.path.split(remote_dir)[0]
+        self.sftp.chdir(home)
         parent = os.path.split(remote_dir)[1]
         try:
             os.mkdir(local_dir)
@@ -154,7 +159,10 @@ class SSHSession(object):
             except FileExistsError:
                 pass
             for filename in files:
-                remote_filepath = self._path_join(path, filename)
+                remote_filepath = self._path_join(home, path, filename)
+                if img.match(filename) or video.match(filename) or executable.match(filename):
+                    logger.debug('Ignore: %s' % remote_filepath)
+                    continue
                 if self.downloaded(remote_filepath):
                     logger.info('Downloaded: %s' % remote_filepath)
                     continue
@@ -176,8 +184,8 @@ class SSHSession(object):
 
 
 if __name__ == '__main__':
-    s = SSHSession(hostname=SSH_HOST, port=SSH_PORT, password=SSH_PASSWORD)
-    s.get_all('/root/xdocker', r'D:\PycharmProjects\secrawler\zdump')
+    s = SSHSession(hostname='106.13.202.41', port=61001, password='')
+    s.get_all('/root/xdocker', r'D:\PycharmProjects\secrawler\zdump\downloads')
     # print(s.command('md5sum /root/xdocker/maltrace.zip'))
     # print(s.command('ls -lh /etc/nginx/'))
     s.close()

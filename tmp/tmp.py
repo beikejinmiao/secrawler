@@ -83,4 +83,16 @@ for slide in prs.slides:
     for shape in slide.shapes:
         print(shape.text)
 
+import os
+import sys
+import rarfile
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+from modules.btbu.config import UNRAR_PATH
+rarfile.UNRAR_TOOL = UNRAR_PATH
+print(UNRAR_PATH)
+filepath = '/opt/secrawler/zdump/downloads/20110114034840.rar'
+dstdir = filepath + '.unpack'
+rar = rarfile.RarFile(filepath)
+with rar as rf:
+    rf.extractall(dstdir)
 

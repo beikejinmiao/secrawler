@@ -5,8 +5,10 @@ import paramiko
 import socket
 import os
 import json
+import traceback
 from stat import S_ISDIR
 from queue import Full
+from libs.timer import timer
 from libs.regex import img, video, executable
 from modules.btbu.util import downloaded_md5
 from libs.logger import logger
@@ -18,7 +20,7 @@ https://gist.github.com/johnfink8/2190472
 SSH_HOST = '10.0.33.50'
 SSH_PORT = 22
 SSH_USER = 'grxxjc'
-SSH_PASSWORD = ''
+SSH_PASSWORD = 'gRxXjc)%3!'
 
 
 class SSHSession(object):
@@ -67,7 +69,13 @@ class SSHSession(object):
             'sftp_find': 0,
             'download': 0,
             'que_put': 0,
+            'img_video_exe': 0,
         }
+        self._log_stats()
+
+    @timer(120, 120)
+    def _log_stats(self):
+        logger.info('Downloader count stats: %s' % json.dumps(self.counter))
 
     def command(self, cmd):
         stdin, stdout, stderr = self.ssh.exec_command(cmd, get_pty=True)
@@ -100,14 +108,24 @@ class SSHSession(object):
 
     def get(self, remotefile, localfile):
         #  Copy remotefile to localfile, overwriting or creating as needed.
-        self.sftp.get(remotefile, localfile)
+        try:
+            self.sftp.get(remotefile, localfile)
+            self.counter['download'] += 1
+        except:
+            logger.error(traceback)
+            logger.error('sftp get error:%s - %s' % (remotefile, localfile))
 
-    def downloaded(self, remote_filepath):
-        md5 = self.command('md5sum ' + remote_filepath)[:32]
-        if md5 not in self.bloom:
+    def is_downloaded(self, remote_filepath):
+        try:
+            # TypeError: 'NoneType' object is not subscriptable
+            md5 = self.command('md5sum ' + remote_filepath)[:32]
+            if md5 in self.bloom:
+                return True
             self.bloom[md5] = remote_filepath
-            return False
-        return True
+        except:
+            logger.error('check downloaded error: %s' % remote_filepath)
+            logger.error(traceback.format_exc())
+        return False
 
     def sftp_walk(self, remotepath):
         # Kindof a stripped down  version of os.walk, implemented for
@@ -116,12 +134,19 @@ class SSHSession(object):
         path = remotepath
         files = []
         folders = []
-        for f in self.sftp.listdir_attr(remotepath):
-            if S_ISDIR(f.st_mode):
-                folders.append(f.filename)
-            else:
-                files.append(f.filename)
+        try:
+            # UnicodeDecodeError
+            for f in self.sftp.listdir_attr(remotepath):
+                if S_ISDIR(f.st_mode):
+                    folders.append(f.filename)
+                else:
+                    files.append(f.filename)
+        except:
+            logger.error('sftp walk error: %s' % remotepath)
+            logger.error(traceback.format_exc())
+
         yield path, folders, files
+
         for folder in folders:
             new_path = self._path_join(remotepath, folder)
             for x in self.sftp_walk(new_path):
@@ -130,12 +155,12 @@ class SSHSession(object):
     def _put_to_queue(self, filepath):
         if self.queue is None:
             return
-        self.counter['que_put'] += 1
         # 当queue长度大于100时等待消费端处理,避免堆积过多导致占用过多磁盘空间
         while self.queue.qsize() > 100:
             logger.debug('Queue size greater than 100, sleep 10s.')
             time.sleep(10)
         self.queue.put(filepath, block=True)        # 阻塞至有空闲槽可用
+        self.counter['que_put'] += 1
         logger.debug('Put: %s' % filepath)
         # while True:
         #     try:
@@ -169,17 +194,16 @@ class SSHSession(object):
                 self.counter['sftp_find'] += 1
                 remote_filepath = self._path_join(home, path, filename)
                 if img.match(filename) or video.match(filename) or executable.match(filename):
+                    self.counter['img_video_exe'] += 1
                     logger.debug('Ignore: %s' % remote_filepath)
                     continue
-                if self.downloaded(remote_filepath):
+                if self.is_downloaded(remote_filepath):
                     logger.info('Downloaded: %s' % remote_filepath)
                     continue
                 local_filepath = os.path.join(local_dir, path, filename)
                 logger.info('Download: %s\t%s' % (remote_filepath, local_filepath))
-                self.counter['download'] += 1
                 self.get(remote_filepath, local_filepath)
                 self._put_to_queue(local_filepath)
-                logger.info('Downloader count stats: %s' % json.dumps(self.counter))
 
     def write_command(self, text, remotefile):
         #  Writes text to remotefile, and makes remotefile executable.

@@ -50,8 +50,9 @@ def unpack(root, dstdir=''):
             else:
                 # shutil.ReadError: xxx.zip is not a zip file
                 shutil.unpack_archive(filepath, dstdir)
-        except Exception as e:
-            logger.error(e)
+        except:
+            logger.error('unpack error: %s' % filepath)
+            logger.error(traceback.format_exc())
             failed_count += 1
         unpack(dstdir)  # 最多支持两层压缩
 
@@ -147,7 +148,6 @@ class Manager(object):
             if self.queue.empty():
                 logger.info('Extract Completed.')
                 time.sleep(60)
-            logger.info('Extractor count stats: %s' % json.dumps(self.counter))
             sys.exit(0)
 
 

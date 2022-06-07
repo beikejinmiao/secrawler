@@ -5,7 +5,6 @@ from tika import parser
 import json
 import time
 import re
-import os
 import shutil
 import rarfile
 import traceback
@@ -13,6 +12,7 @@ from multiprocessing import Queue, Process
 from py7zr import pack_7zarchive, unpack_7zarchive
 import pandas as pd
 from id_validator import validator
+import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 from utils import tree2list

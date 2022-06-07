@@ -20,7 +20,7 @@ https://gist.github.com/johnfink8/2190472
 SSH_HOST = '10.0.33.50'
 SSH_PORT = 22
 SSH_USER = 'grxxjc'
-SSH_PASSWORD = 'gRxXjc)%3!'
+SSH_PASSWORD = ''
 
 
 class SSHSession(object):
@@ -113,7 +113,7 @@ class SSHSession(object):
             self.counter['download'] += 1
         except:
             logger.error(traceback)
-            logger.error('sftp get error:%s - %s' % (remotefile, localfile))
+            logger.error('sftp get error:%s' % remotefile)
 
     def is_downloaded(self, remote_filepath):
         try:
@@ -220,6 +220,7 @@ class SSHSession(object):
 if __name__ == '__main__':
     s = SSHSession(hostname='106.13.202.41', port=61001, password='')
     s.get_all('/root/xdocker', r'D:\PycharmProjects\secrawler\zdump\downloads')
+    print(json.dumps(s.counter))
     # print(s.command('md5sum /root/xdocker/maltrace.zip'))
     # print(s.command('ls -lh /etc/nginx/'))
     s.close()

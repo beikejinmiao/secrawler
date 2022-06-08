@@ -57,8 +57,8 @@ class BTBUCrawler(Spider):
                 to_excel(fout, sheet_name='idcard', index=False)
         writer(os.path.join(DUMP_HOME, 'all_urls.txt'), sorted(self.all_urls.keys()))
         writer(os.path.join(DUMP_HOME, 'broken_urls.txt'), sorted(self.broken_urls.keys()))
-        writer(os.path.join(DUMP_HOME, 'file_urls.txt'), sorted(self.file_urls.keys()))
-        writer(os.path.join(DUMP_HOME, 'file_urls.json'), self.file_urls)
+        writer(os.path.join(DUMP_HOME, 'filepath.txt'), sorted(self.file_urls.keys()))
+        writer(os.path.join(DUMP_HOME, 'filepath.json'), self.file_urls)
         logger.info('Dump success. Total urls:%d, Broken urls: %d, File urls: %d' %
                     (len(self.all_urls), len(self.broken_urls), len(self.file_urls)))
 

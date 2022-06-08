@@ -14,15 +14,16 @@ import pandas as pd
 from id_validator import validator
 import os
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir))
 from utils import tree2list
-from libs.timer import timer, processed
-from libs.regex import img, video, executable, archive, doc
-from utils import reader, traverse
+from libs.timer import timer
+from libs.regex import img, video, executable, archive, doc, plain_text, html, js_css
+from utils import traverse
 from modules.btbu.util import find_idcard
 from modules.btbu.config import UNRAR_PATH
-from modules.btbu.sftp import SSHSession, SSH_HOST, SSH_PORT, SSH_USER, SSH_PASSWORD
-from paths import DOWNLOADS, DUMP_HOME
+from modules.btbu.config import SSH_HOST, SSH_PORT, SSH_USER, SSH_PASSWORD
+from modules.btbu.sftp.client import SSHSession
+from paths import DUMP_HOME
 from libs.logger import logger
 
 
@@ -70,10 +71,9 @@ class Manager(object):
             'others': 0,
         }
 
-    # @processed(start=True)
-    def download(self, remote):
+    def sftp(self, remote_dir):
         ssh = SSHSession(hostname=SSH_HOST, port=SSH_PORT, username=SSH_USER, password=SSH_PASSWORD, queue=self.queue)
-        ssh.get_all(remote, DOWNLOADS)
+        ssh.run(remote_dir)
 
     def _extract(self, root):
         results = dict()
@@ -81,23 +81,37 @@ class Manager(object):
         for filepath in files:
             candidates = list()
             try:
-                if img.match(filepath) or video.match(filepath) or archive.match(filepath) or executable.match(
-                        filepath):
+                # 过滤图片、音视频、可执行程序
+                if img.match(filepath) or video.match(filepath) or \
+                        archive.match(filepath) or executable.match(filepath):
                     continue
-                logger.info("Load: '%s'" % filepath)
+                #
                 if doc.match(filepath):
                     self.counter['doc'] += 1
                 else:
                     self.counter['others'] += 1
-                parsed = parser.from_file(filepath)
-                candidates.extend(find_idcard(parsed["content"]))
+                logger.info("Load: '%s'" % filepath)
+                # 普通文本文件、HTML、JS、CSS文件直接读取解析
+                if plain_text.match(filepath) or html.match(filepath) or js_css.match(filepath):
+                    try:
+                        with open(filepath, encoding='gbk') as fopen:
+                            candidates.extend(find_idcard(fopen.read()))
+                    except UnicodeDecodeError:
+                        with open(filepath, encoding='utf-8') as fopen:
+                            candidates.extend(find_idcard(fopen.read()))
+                    # gbk/utf-8均解码错误，使用tika解析
+                    except:
+                        parsed = parser.from_file(filepath)
+                        candidates.extend(find_idcard(parsed["content"]))
+                else:
+                    parsed = parser.from_file(filepath)
+                    candidates.extend(find_idcard(parsed["content"]))
             except:
                 logger.error(traceback.format_exc())
             if len(candidates) > 0:
                 results[filepath] = list(candidates)
         return results
 
-    # @processed(start=True)
     def extract(self):
         infos = dict()
 
@@ -115,7 +129,6 @@ class Manager(object):
         while True:
             filepath = self.queue.get(block=True)     # 阻塞至项目可得到
             self.counter['que_get'] += 1
-            logger.debug('Get: %s' % filepath)
             results = None
             if img.match(filepath) or video.match(filepath) or executable.match(filepath):
                 continue
@@ -133,11 +146,11 @@ class Manager(object):
             os.remove(filepath)
 
     def run(self):
-        ps_down = Process(target=self.download, name='download', args=('/data/publish',))
+        ps_sftp = Process(target=self.sftp, name='sftp', args=('/data/publish',))
         ps_ext = Process(target=self.extract, name='extract')
-        ps_down.start()
+        ps_sftp.start()
         ps_ext.start()
-        ps_down.join()  # 等待下载结束
+        ps_sftp.join()  # 等待下载结束
         logger.info('Download Completed.')
         while True:
             # 等待处理结束

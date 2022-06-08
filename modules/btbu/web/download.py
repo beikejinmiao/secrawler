@@ -16,7 +16,7 @@ from libs.logger import logger
 def download():
     n_failed = n_success = 0
     suffix = list()
-    for url in reader(os.path.join(DUMP_HOME, 'file_urls.txt')):
+    for url in reader(os.path.join(DUMP_HOME, 'filepath.txt')):
         path = urlparse(url).path
         # 默认不下载图片和可执行文件
         if img.match(path) or video.match(path) or executable.match(path):

@@ -3,6 +3,7 @@
 import time
 import paramiko
 import socket
+import re
 import os
 import json
 import traceback
@@ -17,10 +18,12 @@ from libs.logger import logger
 https://gist.github.com/johnfink8/2190472
 """
 
-SSH_HOST = '10.0.33.50'
-SSH_PORT = 22
-SSH_USER = 'grxxjc'
-SSH_PASSWORD = ''
+filetypes = {
+    'img': lambda x: img.match(x),
+    'video': lambda x: video.match(x),
+    'exe': lambda x: executable.match(x),
+    'js_css': lambda x: executable.match(x),
+}
 
 
 class SSHSession(object):
@@ -69,9 +72,13 @@ class SSHSession(object):
             'sftp_find': 0,
             'download': 0,
             'que_put': 0,
-            'img_video_exe': 0,
+            'img': 0,
+            'video': 0,
+            'exe': 0,
+            'js_css': 0,
         }
         self._log_stats()
+        self.fopen = open('/tmp/sftp_files.txt', 'w')
 
     @timer(120, 120)
     def _log_stats(self):
@@ -192,7 +199,12 @@ class SSHSession(object):
                 pass
             for filename in files:
                 self.counter['sftp_find'] += 1
+                if self.counter['sftp_find'] % 2000 == 0:
+                    logger.info('stats: %s' % json.dumps(self.counter))
+                    self.fopen.flush()
                 remote_filepath = self._path_join(home, path, filename)
+                self.fopen.write(remote_filepath + '\n')
+                #
                 if img.match(filename) or video.match(filename) or executable.match(filename):
                     self.counter['img_video_exe'] += 1
                     logger.debug('Ignore: %s' % remote_filepath)
@@ -201,7 +213,8 @@ class SSHSession(object):
                     logger.info('Downloaded: %s' % remote_filepath)
                     continue
                 local_filepath = os.path.join(local_dir, path, filename)
-                logger.info('Download: %s\t%s' % (remote_filepath, local_filepath))
+                # logger.info('Download: %s\t%s' % (remote_filepath, local_filepath))
+                logger.info('Download: %s' % remote_filepath)
                 self.get(remote_filepath, local_filepath)
                 self._put_to_queue(local_filepath)
 
@@ -215,6 +228,7 @@ class SSHSession(object):
     def close(self):
         self.t.close()
         self.ssh.close()
+        self.fopen.close()
 
 
 if __name__ == '__main__':

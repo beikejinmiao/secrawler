@@ -118,7 +118,8 @@ class SSHSession(object):
         except:
             logger.error('sftp traverse error: %s' % remote_dir)
             logger.info(traceback.format_exc())
-        logger.info('Total file count: %s' % self.counter['sftp_find'])
+        logger.info('Traverse done.\nTotal file count: %s. Valid file count: %s' %
+                    (self.counter['sftp_find'], len(self.files)))
         self.fopen.close()
 
     def download(self):
@@ -135,7 +136,7 @@ class SSHSession(object):
                 logger.info('Download: %s' % remote_filepath)
             except:
                 logger.error(traceback)
-                logger.error('Download Error:%s' % remote_filepath)
+                logger.error('Download Error: %s' % remote_filepath)
                 continue
             # 将下载文件的本地路径放入队列中
             if self.queue is not None:
@@ -145,6 +146,7 @@ class SSHSession(object):
                     time.sleep(10)
                 self.queue.put(local_filepath, block=True)        # 阻塞至有空闲槽可用
                 self.counter['que_put'] += 1
+        logger.info('Download done.\nDownloader count stats: %s' % json.dumps(self.counter))
 
     def close(self):
         self.t.close()

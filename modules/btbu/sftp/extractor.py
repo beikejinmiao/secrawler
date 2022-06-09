@@ -23,7 +23,7 @@ from modules.btbu.util import find_idcard
 from modules.btbu.config import UNRAR_PATH
 from modules.btbu.config import SSH_HOST, SSH_PORT, SSH_USER, SSH_PASSWORD
 from modules.btbu.sftp.client import SSHSession
-from paths import DUMP_HOME
+from paths import DUMP_HOME, DOWNLOADS
 from libs.logger import logger
 
 
@@ -121,6 +121,10 @@ class Manager(object):
             df = pd.DataFrame(tree2list(infos), columns=['filepath', 'idcard'])
             df = df.assign(idcard=df["idcard"]).explode("idcard").reset_index(drop=True)
             df['is_valid'] = df['idcard'].map(lambda x: 1 if validator.is_valid(x) else 0)
+            # 移除本地路径
+            df['filepath'] = df['filepath'].map(lambda x: x[len(DOWNLOADS):].replace('.unpack', ''))
+            # excel/wps无法处理15位以上的数字,所以需添加引号修改单元格格式位文本后移除引号
+            df['idcard'] = df['idcard'].map(lambda x: "'%s'" % x)
             df.to_csv(os.path.join(DUMP_HOME, 'results.csv'))
             logger.info('Extractor count stats: %s' % json.dumps(self.counter))
 
@@ -150,18 +154,22 @@ class Manager(object):
         ps_ext = Process(target=self.extract, name='extract')
         ps_sftp.start()
         ps_ext.start()
-        ps_sftp.join()  # 等待下载结束
-        logger.info('Download Completed.')
         while True:
-            # 等待处理结束
-            if not self.queue.empty():
-                time.sleep(60)
-                continue
-            # 等待最后一个文件被处理完毕
-            if self.queue.empty():
-                logger.info('Extract Completed.')
-                time.sleep(60)
-            sys.exit(0)
+            time.sleep(60)
+        # TODO: sftp进程结束后会导致extract进行同时结束
+        # ps_sftp.join()  # 等待下载结束
+        # logger.info('Download Completed.')
+        # while True:
+        #     time.sleep(60)
+        #     # 等待处理结束
+        #     if not self.queue.empty():
+        #         time.sleep(60)
+        #         continue
+        #     # 等待最后一个文件被处理完毕
+        #     if self.queue.empty():
+        #         logger.info('Extract Completed.')
+        #         time.sleep(60)
+        #     sys.exit(0)
 
 
 if __name__ == '__main__':
@@ -170,5 +178,4 @@ if __name__ == '__main__':
         manager.run()
     except KeyboardInterrupt:
         logger.info('Extractor count stats: %s' % json.dumps(manager.counter))
-
 

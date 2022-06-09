@@ -12,5 +12,5 @@ if platform.system().lower() == 'windows':
 SSH_HOST = '10.0.33.50'
 SSH_PORT = 22
 SSH_USER = 'grxxjc'
-SSH_PASSWORD = 'gRxXjc)%3!'
+SSH_PASSWORD = ''
 
